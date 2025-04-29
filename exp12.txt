@@ -1,0 +1,61 @@
+#include <iostream>
+#include <vector>
+#include <string>
+using namespace std;
+
+typedef vector<int> List;
+vector<string> code;
+
+List makelist(int i) {
+    return List{ i };
+}
+
+List merge(const List &list1, const List &list2) {
+    List result = list1;
+    result.insert(result.end(), list2.begin(), list2.end());
+    return result;
+}
+
+void backpatch(const List &list, int target) {
+    for (int i : list) {
+        code[i] += to_string(target);
+    }
+}
+
+int emit(const string &instr) {
+    code.push_back(instr);
+    return code.size() - 1;
+}
+
+int main() {
+    string a, b, op;
+    
+    cout << "Enter first variable: ";
+    cin >> a;
+    cout << "Enter comparison operator (<, >, ==, !=, <=, >=): ";
+    cin >> op;
+    cout << "Enter second variable: ";
+    cin >> b;
+
+    int index1 = emit("if " + a + " " + op + " " + b + " goto ");
+    List trueList = makelist(index1);
+
+    int index2 = emit("goto ");
+    List falseList = makelist(index2);
+
+    int L1 = code.size();
+    emit("L1: true part code");
+
+    int L2 = code.size();
+    emit("L2: false part code");
+
+    backpatch(trueList, L1);
+    backpatch(falseList, L2);
+
+    cout << "\nGenerated Three Address Code with Backpatching:\n";
+    for (int i = 0; i < code.size(); ++i) {
+        cout << i << ": " << code[i] << endl;
+    }
+
+    return 0;
+}
