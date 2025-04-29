@@ -1,0 +1,75 @@
+#include <iostream>
+#include <stack>
+#include <cctype>
+#include <regex>
+using namespace std;
+
+// Function to check operator precedence
+int precedence(char op) {
+    if (op == '+' || op == '-') return 1;
+    if (op == '*' || op == '/') return 2;
+    return 0;
+}
+
+// Convert infix expression to postfix
+string infixToPostfix(string infix) {
+    stack<char> s;
+    string postfix;
+    for (char ch : infix) {
+        if (isalnum(ch)) {
+            postfix += ch;
+        } else if (ch == '(') {
+            s.push(ch);
+        } else if (ch == ')') {
+            while (!s.empty() && s.top() != '(') {
+                postfix += s.top();
+                s.pop();
+            }
+            s.pop(); // Remove '(' from stack
+        } else {
+            while (!s.empty() && precedence(s.top()) >= precedence(ch)) {
+                postfix += s.top();
+                s.pop();
+            }
+            s.push(ch);
+        }
+    }
+    while (!s.empty()) {
+        postfix += s.top();
+        s.pop();
+    }
+    return postfix;
+}
+
+// Convert infix expression to prefix
+string infixToPrefix(string infix) {
+    reverse(infix.begin(), infix.end());
+    for (char &ch : infix) {
+        if (ch == '(') ch = ')';
+        else if (ch == ')') ch = '(';
+    }
+    string prefix = infixToPostfix(infix);
+    reverse(prefix.begin(), prefix.end());
+    return prefix;
+}
+
+int main() {
+    string infix;
+    cout << "Enter an infix expression (only variables, numbers, and operators +, -, *, /, (, )): ";
+    cin >> infix;
+    
+    // Validate input using regex
+    regex valid_input(R"([a-zA-Z0-9+\-*/()]+)");
+    if (!regex_match(infix, valid_input)) {
+        cout << "Invalid input! Please enter a valid infix expression." << endl;
+        return 1;
+    }
+    
+    string postfix = infixToPostfix(infix);
+    string prefix = infixToPrefix(infix);
+    
+    cout << "Postfix Expression: " << postfix << endl;
+    cout << "Prefix Expression: " << prefix << endl;
+    
+    return 0;
+}

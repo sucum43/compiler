@@ -1,0 +1,41 @@
+#include <iostream>
+#include <fstream>
+#include <cstdlib>
+#include <string>
+
+int main() {
+    std::string statement;
+    std::cout << "Enter a simple C++ statement (e.g., int x = 5;): ";
+    std::getline(std::cin, statement);
+
+    // Create a minimal C++ program
+    std::ofstream outFile("temp_input.cpp");
+    if (!outFile) {
+        std::cerr << "Error: Could not create temp_input.cpp\n";
+        return 1;
+    }
+
+    outFile << "#include <iostream>\n";
+    outFile << "int main() {\n";
+    outFile << "    " << statement << "\n";
+    outFile << "    return 0;\n";
+    outFile << "}\n";
+    outFile.close();
+
+    // Compile it to object file
+    int compileStatus = std::system("g++ -c temp_input.cpp -o temp_output.o");
+    if (compileStatus != 0) {
+        std::cerr << "Compilation failed.\n";
+        return 1;
+    }
+
+    // Dump machine code using objdump
+    std::cout << "\nGenerated Machine Code (Assembly + Hex):\n\n";
+    std::system("objdump -d temp_output.o");
+
+    // Optional cleanup (uncomment if you want to delete temp files)
+    // std::remove("temp_input.cpp");
+    // std::remove("temp_output.o");
+
+    return 0;
+}

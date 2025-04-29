@@ -1,0 +1,93 @@
+#include <iostream>
+#include <map>
+#include <set>
+#include <vector>
+using namespace std;
+
+map<char, set<char>> leading, trailing;
+vector<string> productions;
+set<char> computedLeading, computedTrailing; // Track already computed non-terminals
+
+void computeLeading(char nonTerminal) {
+    if (computedLeading.count(nonTerminal)) return; // Prevent infinite recursion
+    computedLeading.insert(nonTerminal);
+
+    for (string prod : productions) {
+        if (prod[0] == nonTerminal) {
+            for (int i = 3; i < prod.length(); i++) {
+                if (!isupper(prod[i])) {  // Terminal or operator
+                    leading[nonTerminal].insert(prod[i]); 
+                    break;
+                } else {  // Non-terminal
+                    if (!computedLeading.count(prod[i]))
+                        computeLeading(prod[i]);
+                    leading[nonTerminal].insert(leading[prod[i]].begin(), leading[prod[i]].end());
+                    
+                    // Include operators like + or * after the non-terminal
+                    if (i + 1 < prod.length() && (prod[i + 1] == '+' || prod[i + 1] == '*'))
+                        leading[nonTerminal].insert(prod[i + 1]);
+                    break;
+                }
+            }
+        }
+    }
+}
+
+void computeTrailing(char nonTerminal) {
+    if (computedTrailing.count(nonTerminal)) return; // Prevent infinite recursion
+    computedTrailing.insert(nonTerminal);
+
+    for (string prod : productions) {
+        if (prod[0] == nonTerminal) {
+            for (int i = prod.length() - 1; i >= 3; i--) {
+                if (!isupper(prod[i])) {  // Terminal or operator
+                    trailing[nonTerminal].insert(prod[i]);
+                    break;
+                } else {  // Non-terminal
+                    if (!computedTrailing.count(prod[i]))
+                        computeTrailing(prod[i]);
+                    trailing[nonTerminal].insert(trailing[prod[i]].begin(), trailing[prod[i]].end());
+
+                    // Include operators like + or * before the non-terminal
+                    if (i - 1 >= 3 && (prod[i - 1] == '+' || prod[i - 1] == '*'))
+                        trailing[nonTerminal].insert(prod[i - 1]);
+                    break;
+                }
+            }
+        }
+    }
+}
+
+int main() {
+    int n;
+    cout << "Enter the number of productions: ";
+    cin >> n;
+    cin.ignore();
+
+    cout << "Enter the productions (Format: A->Bc):" << endl;
+    for (int i = 0; i < n; i++) {
+        string prod;
+        getline(cin, prod);
+        productions.push_back(prod);
+        leading[prod[0]]; 
+        trailing[prod[0]];
+    }
+    
+    for (auto &entry : leading) computeLeading(entry.first);
+    for (auto &entry : trailing) computeTrailing(entry.first);
+
+    cout << "\nLeading and Trailing Computation:\n";
+    for (auto &entry : leading) {
+        cout << "Leading(" << entry.first << ") = { ";
+        for (char ch : entry.second) cout << ch << " ";
+        cout << "}\n";
+    }
+    
+    for (auto &entry : trailing) {
+        cout << "Trailing(" << entry.first << ") = { ";
+        for (char ch : entry.second) cout << ch << " ";
+        cout << "}\n";
+    }
+    
+    return 0;
+}

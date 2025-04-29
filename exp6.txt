@@ -1,0 +1,93 @@
+#include <iostream>
+#include <vector>
+#include <string>
+using namespace std;
+
+vector<char> stack;
+vector<string> grammar;
+int num_rules;
+
+void push(char c) {
+    stack.push_back(c);
+}
+
+void pop() {
+    if (!stack.empty()) {
+        stack.pop_back();
+    }
+}
+
+void displayStack() {
+    for (char c : stack) cout << c;
+    cout << endl;
+}
+
+bool tryReduceOnce() {
+    for (int i = 0; i < num_rules; i++) {
+        string rule = grammar[i];
+        string rhs = rule.substr(3); // Skip "E->"
+        int len = rhs.length();
+
+        if (stack.size() >= len) {
+            bool match = true;
+            for (int j = 0; j < len; j++) {
+                if (stack[stack.size() - len + j] != rhs[j]) {
+                    match = false;
+                    break;
+                }
+            }
+
+            if (match) {
+                for (int j = 0; j < len; j++) pop();
+                push('E');
+                cout << "Reduced by " << rule << endl;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+void tryReduceAll() {
+    while (tryReduceOnce()) {
+        // keep reducing while possible
+    }
+}
+
+int main() {
+    cout << "Enter number of grammar rules: ";
+    cin >> num_rules;
+    cin.ignore();
+
+    cout << "Enter grammar rules (format: E->RHS), e.g., E->E+E:\n";
+    for (int i = 0; i < num_rules; i++) {
+        string rule;
+        getline(cin, rule);
+        grammar.push_back(rule);
+    }
+
+    string input;
+    cout << "Enter the input string: ";
+    cin >> input;
+
+    cout << "\nStack Operations:\n";
+    for (size_t i = 0; i < input.length(); i++) {
+        push(input[i]);
+        cout << "Shifted: " << input[i] << endl;
+        tryReduceAll();
+    }
+
+    // Final reductions after full input
+    tryReduceAll();
+
+    cout << "\nFinal Stack: ";
+    displayStack();
+
+    if (stack.size() == 1 && stack.back() == 'E') {
+        cout << "\nAccepted: The input is successfully parsed." << endl;
+    } else {
+        cout << "\nRejected: The input cannot be completely reduced to E." << endl;
+    }
+
+    return 0;
+}

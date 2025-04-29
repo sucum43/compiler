@@ -1,0 +1,182 @@
+#include <iostream>
+#include <vector>
+#include <map>
+#include <set>
+#include <string>
+#include <sstream>
+#include <algorithm>
+
+using namespace std;
+
+// Utility to trim spaces
+string trim(const string &str) {
+    size_t first = str.find_first_not_of(' ');
+    if (first == string::npos) return "";
+    size_t last = str.find_last_not_of(' ');
+    return str.substr(first, (last - first + 1));
+}
+
+struct Production {
+    string lhs;
+    vector<string> rhs;
+};
+
+struct LR0Item {
+    string lhs;
+    vector<string> rhs;
+    int dotPos;
+
+    bool operator<(const LR0Item &other) const {
+        return tie(lhs, rhs, dotPos) < tie(other.lhs, other.rhs, other.dotPos);
+    }
+
+    bool operator==(const LR0Item &other) const {
+        return lhs == other.lhs && rhs == other.rhs && dotPos == other.dotPos;
+    }
+};
+
+vector<Production> grammar;
+set<string> nonTerminals;
+map<string, vector<Production>> productionsMap;
+
+// Parse the grammar input
+void readGrammar() {
+    int n;
+    cout << "Enter number of productions: ";
+    cin >> n;
+    cin.ignore();
+
+    for (int i = 0; i < n; i++) {
+        string line;
+        cout << "Production " << (i + 1) << ": ";
+        getline(cin, line);
+
+        size_t pos = line.find("->");
+        if (pos == string::npos) {
+            cout << "Invalid format. Use A -> alpha | beta\n";
+            i--;
+            continue;
+        }
+
+        string lhs = trim(line.substr(0, pos));
+        string rhsFull = trim(line.substr(pos + 2));
+        nonTerminals.insert(lhs);
+
+        stringstream ss(rhsFull);
+        string alternative;
+        while (getline(ss, alternative, '|')) {
+            vector<string> rhsSymbols;
+            stringstream rhsStream(trim(alternative));
+            string symbol;
+            while (rhsStream >> symbol) {
+                rhsSymbols.push_back(symbol);
+            }
+            grammar.push_back({ lhs, rhsSymbols });
+            productionsMap[lhs].push_back({ lhs, rhsSymbols });
+        }
+    }
+}
+
+// Compute closure of an item set
+set<LR0Item> closure(const set<LR0Item> &items) {
+    set<LR0Item> closureSet = items;
+    bool added;
+
+    do {
+        added = false;
+        set<LR0Item> newItems;
+
+        for (const auto &item : closureSet) {
+            if (item.dotPos < item.rhs.size()) {
+                string symbolAfterDot = item.rhs[item.dotPos];
+                if (nonTerminals.find(symbolAfterDot) != nonTerminals.end()) {
+                    for (const auto &prod : productionsMap[symbolAfterDot]) {
+                        LR0Item newItem = { prod.lhs, prod.rhs, 0 };
+                        if (closureSet.find(newItem) == closureSet.end()) {
+                            newItems.insert(newItem);
+                            added = true;
+                        }
+                    }
+                }
+            }
+        }
+        closureSet.insert(newItems.begin(), newItems.end());
+    } while (added);
+
+    return closureSet;
+}
+
+// Compute GOTO operation
+set<LR0Item> gotoOperation(const set<LR0Item> &items, const string &symbol) {
+    set<LR0Item> movedItems;
+
+    for (const auto &item : items) {
+        if (item.dotPos < item.rhs.size() && item.rhs[item.dotPos] == symbol) {
+            LR0Item movedItem = item;
+            movedItem.dotPos++;
+            movedItems.insert(movedItem);
+        }
+    }
+
+    return closure(movedItems);
+}
+
+// Display a set of LR(0) items
+void printItemSet(int index, const set<LR0Item> &itemSet) {
+    cout << "\nI" << index << ":\n";
+    for (const auto &item : itemSet) {
+        cout << item.lhs << " -> ";
+        for (int i = 0; i < item.rhs.size(); i++) {
+            if (i == item.dotPos) cout << ".";
+            cout << item.rhs[i];
+        }
+        if (item.dotPos == item.rhs.size()) cout << ".";
+        cout << "\n";
+    }
+}
+
+int main() {
+    readGrammar();
+
+    // Augment grammar
+    string startSymbol = grammar[0].lhs;
+    grammar.insert(grammar.begin(), { startSymbol + "'", { startSymbol } });
+    nonTerminals.insert(startSymbol + "'");
+    productionsMap[startSymbol + "'"].push_back({ startSymbol + "'", { startSymbol } });
+
+    set<LR0Item> startItemSet = closure({ { startSymbol + "'", { startSymbol }, 0 } });
+    vector<set<LR0Item>> canonicalCollection = { startItemSet };
+
+    map<set<LR0Item>, int> stateIdMap;
+    stateIdMap[startItemSet] = 0;
+
+    vector<string> symbols;
+
+    // Collect terminals and non-terminals
+    for (const auto &prod : grammar) {
+        for (const auto &sym : prod.rhs) {
+            if (nonTerminals.find(sym) == nonTerminals.end()) {
+                symbols.push_back(sym);
+            }
+        }
+    }
+    symbols.insert(symbols.end(), nonTerminals.begin(), nonTerminals.end());
+
+    // Build canonical collection
+    for (int i = 0; i < canonicalCollection.size(); i++) {
+        for (const string &sym : symbols) {
+            set<LR0Item> nextSet = gotoOperation(canonicalCollection[i], sym);
+            if (!nextSet.empty() && stateIdMap.find(nextSet) == stateIdMap.end()) {
+                stateIdMap[nextSet] = canonicalCollection.size();
+                canonicalCollection.push_back(nextSet);
+            }
+        }
+    }
+
+    // Print all item sets
+    for (int i = 0; i < canonicalCollection.size(); i++) {
+        printItemSet(i, canonicalCollection[i]);
+    }
+
+    return 0;
+}

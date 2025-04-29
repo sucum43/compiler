@@ -1,0 +1,113 @@
+#include <iostream>
+#include <stack>
+#include <vector>
+#include <string>
+#include <cctype>
+
+using namespace std;
+
+struct Quadruple {
+    string op;
+    string arg1;
+    string arg2;
+    string result;
+};
+
+struct Triple {
+    string op;
+    string arg1;
+    string arg2;
+};
+
+vector<Quadruple> quadruples;
+vector<Triple> triples;
+vector<int> indirectTriple;
+
+int tempCount = 1;
+
+// Function to create a temporary variable name like t1, t2, ...
+string newTemp() {
+    return "t" + to_string(tempCount++);
+}
+
+// Function to check if a character is operator
+bool isOperator(char c) {
+    return c == '+' || c == '-' || c == '*' || c == '/';
+}
+
+// Function to generate intermediate code
+string generateIC(string expr) {
+    stack<string> operands;
+    stack<char> operators;
+
+    for (int i = 0; i < expr.length(); ++i) {
+        char ch = expr[i];
+
+        if (ch == ' ' || ch == '(')
+            continue;
+
+        if (isalnum(ch)) {
+            operands.push(string(1, ch));
+        } else if (isOperator(ch)) {
+            operators.push(ch);
+        } else if (ch == ')') {
+            // Pop two operands and one operator
+            string op2 = operands.top(); operands.pop();
+            string op1 = operands.top(); operands.pop();
+            char op = operators.top(); operators.pop();
+            string temp = newTemp();
+
+            // Store in quadruple
+            quadruples.push_back({string(1, op), op1, op2, temp});
+            // Store in triple
+            triples.push_back({string(1, op), op1, op2});
+            // Push the result back
+            operands.push(temp);
+        }
+    }
+    return operands.top(); // final result
+}
+
+// Function to display quadruples
+void displayQuadruples() {
+    cout << "\n--- Quadruples ---\n";
+    cout << "Op\tArg1\tArg2\tResult\n";
+    for (auto &q : quadruples) {
+        cout << q.op << "\t" << q.arg1 << "\t" << q.arg2 << "\t" << q.result << "\n";
+    }
+}
+
+// Function to display triples
+void displayTriples() {
+    cout << "\n--- Triples ---\n";
+    cout << "Index\tOp\tArg1\tArg2\n";
+    for (int i = 0; i < triples.size(); ++i) {
+        cout << i << "\t" << triples[i].op << "\t" << triples[i].arg1 << "\t" << triples[i].arg2 << "\n";
+    }
+}
+
+// Function to display indirect triples
+void displayIndirectTriples() {
+    cout << "\n--- Indirect Triples ---\n";
+    cout << "Pointer\tInstruction\n";
+    for (int i = 0; i < triples.size(); ++i) {
+        cout << i << "\t(" << triples[i].op << ", " << triples[i].arg1 << ", " << triples[i].arg2 << ")\n";
+    }
+}
+
+int main() {
+    string expression;
+
+    cout << "Enter a fully parenthesized arithmetic expression (e.g., ((a+b)*(c-d))): ";
+    getline(cin, expression);
+
+    string result = generateIC(expression);
+
+    displayQuadruples();
+    displayTriples();
+    displayIndirectTriples();
+
+    cout << "\nFinal Result stored in: " << result << endl;
+
+    return 0;
+}
